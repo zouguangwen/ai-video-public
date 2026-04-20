@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>定价利润分析</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0D0D0F;
+    --surface: #17171A;
+    --surface2: #1F1F24;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #F0EFE9;
+    --muted: rgba(240,239,233,0.45);
+    --dim: rgba(240,239,233,0.22);
+    --green: #4AE3A0;
+    --green-dim: rgba(74,227,160,0.12);
+    --amber: #F5C26B;
+    --amber-dim: rgba(245,194,107,0.12);
+    --red: #FF6B6B;
+    --red-dim: rgba(255,107,107,0.12);
+    --blue: #6B9FFF;
+    --blue-dim: rgba(107,159,255,0.12);
+    --mono: 'DM Mono', monospace;
+    --sans: 'Noto Sans SC', sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-weight: 300;
+    line-height: 1.6;
+    min-height: 100vh;
+    padding: 48px 24px 80px;
+  }
+
+  .page { max-width: 920px; margin: 0 auto; }
+
+  /* Header */
+  .header { margin-bottom: 52px; }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    color: var(--green);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  h1 {
+    font-size: clamp(28px, 5vw, 42px);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    margin-bottom: 10px;
+  }
+  .subtitle { font-size: 14px; color: var(--muted); }
+
+  /* Section */
+  .section { margin-bottom: 48px; }
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .section-header h2 {
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .section-header .line {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* Cost grid */
+  .cost-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .cost-cell {
+    background: var(--surface);
+    padding: 20px 22px;
+  }
+  .cost-cell .label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .cost-cell .value {
+    font-family: var(--mono);
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .cost-cell .value.accent { color: var(--red); }
+  .cost-cell .note { font-size: 12px; color: var(--dim); }
+
+  /* Tab switcher */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px;
+    width: fit-content;
+  }
+  .tab-btn {
+    padding: 7px 16px;
+    border-radius: 5px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-family: var(--sans);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .tab-btn.active {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border2);
+  }
+  .tab-btn:hover:not(.active) { color: var(--text); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* Table */
+  .table-wrap { overflow-x: auto; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  thead tr { border-bottom: 1px solid var(--border2); }
+  th {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--dim);
+    text-transform: uppercase;
+    padding: 10px 14px;
+    text-align: right;
+    font-weight: 400;
+  }
+  th:first-child { text-align: left; }
+  td {
+    padding: 14px 14px;
+    text-align: right;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text);
+  }
+  td:first-child {
+    text-align: left;
+    font-family: var(--sans);
+    font-weight: 500;
+    color: var(--muted);
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .profit { color: var(--green); }
+  .cost-col { color: var(--muted); }
+  .highlight { color: var(--text); font-weight: 500; }
+
+  /* Badge */
+  .badge {
+    display: inline-block;
+    padding: 3px 9px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: var(--mono);
+    font-weight: 500;
+  }
+  .badge-g { background: var(--green-dim); color: var(--green); }
+  .badge-a { background: var(--amber-dim); color: var(--amber); }
+  .badge-r { background: var(--red-dim); color: var(--red); }
+  .badge-b { background: var(--blue-dim); color: var(--blue); }
+
+  /* Note box */
+  .note-box {
+    margin-top: 16px;
+    padding: 14px 16px;
+    background: var(--surface);
+    border-left: 2px solid var(--amber);
+    border-radius: 0 6px 6px 0;
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+  .note-box strong { color: var(--amber); font-weight: 500; }
+
+  /* Benefits grid */
+  .benefits-grid {
+    display: grid;
+    grid-template-columns: 180px repeat(4, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .bg-cell {
+    background: var(--surface);
+    padding: 13px 14px;
+    font-size: 13px;
+  }
+  .bg-cell.header {
+    background: var(--surface2);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--dim);
+    text-transform: uppercase;
+    font-weight: 400;
+    text-align: center;
+    padding: 12px 10px;
+  }
+  .bg-cell.header.tier {
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  .bg-cell.label-cell {
+    font-family: var(--sans);
+    font-weight: 500;
+    color: var(--muted);
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+  }
+  .bg-cell.value-cell {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text);
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .bg-cell.value-cell.accent { color: var(--green); font-weight: 500; }
+  .bg-cell.value-cell.trial { color: var(--amber); font-size: 11px; }
+  .bg-cell.value-cell.dim { color: var(--muted); }
+
+  /* Competitor cards */
+  .cmp-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .cmp-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+  }
+  .cmp-card .tier-name {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .cmp-card .our-price {
+    font-family: var(--mono);
+    font-size: 26px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .cmp-card .cmp-price {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+  .cmp-card .multiple {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--green-dim);
+    border-radius: 6px;
+    padding: 5px 10px;
+  }
+  .cmp-card .multiple span { font-family: var(--mono); font-size: 13px; color: var(--green); font-weight: 500; }
+  .cmp-card .multiple small { font-size: 11px; color: var(--muted); }
+
+  /* Conclusions */
+  .conclusions { display: flex; flex-direction: column; gap: 12px; }
+  .conclusion-item {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    padding: 16px 18px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  .c-num { font-family: var(--mono); font-size: 11px; color: var(--green); min-width: 20px; padding-top: 2px; }
+  .c-text { font-size: 13px; color: var(--muted); line-height: 1.7; }
+  .c-text strong { color: var(--text); font-weight: 500; }
+
+  @media (max-width: 640px) {
+    .cost-grid { grid-template-columns: 1fr; }
+    .cmp-grid { grid-template-columns: 1fr; }
+    th, td { padding: 10px 8px; font-size: 12px; }
+    .benefits-grid { grid-template-columns: 110px repeat(4, 1fr); }
+    .bg-cell { padding: 10px 8px; font-size: 11px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <div class="header">
+    <p class="eyebrow">Pricing Analysis · Movie AI</p>
+    <h1>订阅定价分析</h1>
+    <p class="subtitle">基于 API 成本的各套餐毛利率拆解 · 数据源：pricing_analysis.xlsx</p>
+  </div>
+
+  <!-- ① 成本基准 -->
+  <div class="section">
+    <div class="section-header">
+      <h2>① 成本基准</h2>
+      <div class="line"></div>
+    </div>
+    <div class="cost-grid">
+      <div class="cost-cell">
+        <div class="label">15s 视频 API 成本</div>
+        <div class="value">¥18</div>
+        <div class="note">含生成全链路调用</div>
+      </div>
+      <div class="cost-cell">
+        <div class="label">利润率区间</div>
+        <div class="value">15–28%</div>
+        <div class="note">Pro 28% · Plus 22% · Max 15%</div>
+      </div>
+      <div class="cost-cell">
+        <div class="label">15s 视频售价区间</div>
+        <div class="value accent">¥21–25</div>
+        <div class="note">按各档利润率反推</div>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>项目</th>
+            <th>免费版</th>
+            <th>Pro（基础）</th>
+            <th>Plus（专业）</th>
+            <th>Max（高级）</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>成本 / 15s</td>
+            <td class="cost-col">—</td>
+            <td class="cost-col">¥18.00</td>
+            <td class="cost-col">¥18.00</td>
+            <td class="cost-col">¥18.00</td>
+          </tr>
+          <tr>
+            <td>目标利润率</td>
+            <td class="cost-col">—</td>
+            <td><span class="badge badge-g">28%</span></td>
+            <td><span class="badge badge-a">22%</span></td>
+            <td><span class="badge badge-a">15%</span></td>
+          </tr>
+          <tr>
+            <td>售价 / 15s（反推）</td>
+            <td class="cost-col">—</td>
+            <td class="highlight">¥25.00</td>
+            <td class="highlight">¥23.08</td>
+            <td class="highlight">¥21.18</td>
+          </tr>
+          <tr>
+            <td>利润 / 15s</td>
+            <td class="cost-col">—</td>
+            <td class="profit">¥7.00</td>
+            <td class="profit">¥5.08</td>
+            <td class="profit">¥3.18</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ② 订阅价格 -->
+  <div class="section">
+    <div class="section-header">
+      <h2>② 订阅价格</h2>
+      <div class="line"></div>
+    </div>
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('price','month',this)">月付</button>
+      <button class="tab-btn" onclick="switchTab('price','year',this)">年付（月均 · 8折）</button>
+    </div>
+
+    <div class="tab-content active" id="price-month">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>套餐</th>
+              <th>月付价格</th>
+              <th>每月积分</th>
+              <th>利润率</th>
+              <th>月利润（积分满用）</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>免费版</td>
+              <td>¥0</td>
+              <td>120 积分</td>
+              <td><span class="badge badge-b">—</span></td>
+              <td class="cost-col">—</td>
+            </tr>
+            <tr>
+              <td>Pro（基础）</td>
+              <td class="highlight">¥129 / 月</td>
+              <td>1,300 积分</td>
+              <td><span class="badge badge-g">28%</span></td>
+              <td class="profit">¥36.12</td>
+            </tr>
+            <tr>
+              <td>Plus（专业）</td>
+              <td class="highlight">¥339 / 月</td>
+              <td>2,400 积分</td>
+              <td><span class="badge badge-a">22%</span></td>
+              <td class="profit">¥74.58</td>
+            </tr>
+            <tr>
+              <td>Max（高级）</td>
+              <td class="highlight">¥899 / 月</td>
+              <td>3,500 积分</td>
+              <td><span class="badge badge-a">15%</span></td>
+              <td class="profit">¥134.85</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="note-box">
+        <strong>注：</strong>月利润 = 月付价格 × 利润率，为用户当月积分全部使用时的最低利润。实际大多数用户积分使用率低于 100%，未使用积分对平台为纯收入，真实毛利率更高。
+      </div>
+    </div>
+
+    <div class="tab-content" id="price-year">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>套餐</th>
+              <th>月付价格</th>
+              <th>年付月均（8折）</th>
+              <th>年付总价</th>
+              <th>年省金额</th>
+              <th>利润率</th>
+              <th>月利润（积分满用）</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>免费版</td>
+              <td>¥0</td>
+              <td>¥0</td>
+              <td>¥0</td>
+              <td class="cost-col">—</td>
+              <td><span class="badge badge-b">—</span></td>
+              <td class="cost-col">—</td>
+            </tr>
+            <tr>
+              <td>Pro（基础）</td>
+              <td class="cost-col">¥129</td>
+              <td class="highlight">¥103.2 / 月</td>
+              <td>¥1,238.4</td>
+              <td class="profit">省 ¥309.6</td>
+              <td><span class="badge badge-a">10%</span></td>
+              <td class="profit">¥10.32</td>
+            </tr>
+            <tr>
+              <td>Plus（专业）</td>
+              <td class="cost-col">¥339</td>
+              <td class="highlight">¥271.2 / 月</td>
+              <td>¥3,254.4</td>
+              <td class="profit">省 ¥813.6</td>
+              <td><span class="badge badge-r">2.5%</span></td>
+              <td class="profit">¥6.78</td>
+            </tr>
+            <tr>
+              <td>Max（高级）</td>
+              <td class="cost-col">¥899</td>
+              <td class="highlight">¥719.2 / 月</td>
+              <td>¥8,630.4</td>
+              <td class="profit">省 ¥2,157.6</td>
+              <td><span class="badge badge-r">⚠ 亏损</span></td>
+              <td style="color:var(--red);font-family:var(--mono);font-size:13px;text-align:right">−¥44.95</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="note-box">
+        <strong>⚠ 年付风险：</strong>收入下降 20% 但积分成本不变，年付利润率大幅压缩。<strong style="color:var(--red)">Max 年付如用户积分用满，每月亏损约 ¥45</strong>，需依赖用户积分使用率低于 75% 才能盈利。建议重新审视 Max 年付定价，或考虑年付积分略少于月付积分。
+      </div>
+    </div>
+  </div>
+
+  <!-- ③ 权益明细 -->
+  <div class="section">
+    <div class="section-header">
+      <h2>③ 权益明细</h2>
+      <div class="line"></div>
+    </div>
+    <div class="benefits-grid">
+      <div class="bg-cell header">权益项</div>
+      <div class="bg-cell header tier">免费版</div>
+      <div class="bg-cell header tier">Pro</div>
+      <div class="bg-cell header tier">Plus</div>
+      <div class="bg-cell header tier">Max</div>
+
+      <div class="bg-cell label-cell">每月积分</div>
+      <div class="bg-cell value-cell">120</div>
+      <div class="bg-cell value-cell accent">1,300</div>
+      <div class="bg-cell value-cell accent">2,400</div>
+      <div class="bg-cell value-cell accent">3,500</div>
+
+      <div class="bg-cell label-cell">约可生成视频</div>
+      <div class="bg-cell value-cell">1–2 条</div>
+      <div class="bg-cell value-cell">约 5 条</div>
+      <div class="bg-cell value-cell">约 14 条</div>
+      <div class="bg-cell value-cell">约 36 条</div>
+
+      <div class="bg-cell label-cell">最大视频时长</div>
+      <div class="bg-cell value-cell">15s</div>
+      <div class="bg-cell value-cell">60s</div>
+      <div class="bg-cell value-cell">120s</div>
+      <div class="bg-cell value-cell accent">不限制</div>
+
+      <div class="bg-cell label-cell">AI 模特</div>
+      <div class="bg-cell value-cell trial">7天体验</div>
+      <div class="bg-cell value-cell">300 + ×1</div>
+      <div class="bg-cell value-cell">800 + ×2</div>
+      <div class="bg-cell value-cell accent">1,500 + ×3</div>
+
+      <div class="bg-cell label-cell">广告克隆</div>
+      <div class="bg-cell value-cell trial">7天体验</div>
+      <div class="bg-cell value-cell">10 个/月</div>
+      <div class="bg-cell value-cell">30 个/月</div>
+      <div class="bg-cell value-cell accent">不限制</div>
+
+      <div class="bg-cell label-cell">团队协作</div>
+      <div class="bg-cell value-cell dim">无</div>
+      <div class="bg-cell value-cell dim">无</div>
+      <div class="bg-cell value-cell">3 人</div>
+      <div class="bg-cell value-cell accent">不限制</div>
+    </div>
+  </div>
+
+  <!-- ④ 竞品参考 -->
+  <div class="section">
+    <div class="section-header">
+      <h2>④ 竞品参考对比</h2>
+      <div class="line"></div>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">对比维度：单条 15s 视频生成价格 · 我方 Pro 售价 <span style="color:var(--text);font-family:var(--mono)">¥25/条</span>（成本 ¥18，利润率 28%）</div>
+    <div class="cmp-grid">
+      <div class="cmp-card">
+        <div class="tier-name">AdsTurbo 海外</div>
+        <div class="our-price">¥34<span style="font-size:14px;color:var(--muted)">/条</span></div>
+        <div class="cmp-price">我方 ¥25/条 · 月付 ~¥280/月</div>
+        <div class="multiple"><span>0.74×</span><small>我方更便宜</small></div>
+      </div>
+      <div class="cmp-card">
+        <div class="tier-name">jimeng 国内</div>
+        <div class="our-price">¥20<span style="font-size:14px;color:var(--muted)">/条</span></div>
+        <div class="cmp-price">我方 ¥25/条 · 月付 ¥79/月</div>
+        <div class="multiple" style="background:var(--amber-dim)"><span style="color:var(--amber)">1.25×</span><small>我方更贵</small></div>
+      </div>
+      <div class="cmp-card">
+        <div class="tier-name">Creadify 海外</div>
+        <div class="our-price">¥28<span style="font-size:14px;color:var(--muted)">/条</span></div>
+        <div class="cmp-price">我方 ¥25/条 · 月付 ~¥280/月</div>
+        <div class="multiple"><span>0.89×</span><small>我方略便宜</small></div>
+      </div>
+    </div>
+    <div class="note-box">
+      <strong>溢价倍数</strong> = 我方售价（¥25）÷ 竞品单条价格。对比海外产品我方有价格优势；唯独 <strong style="color:var(--amber)">jimeng 同用 Seedance 2.0</strong>，我方贵 25%，差异化须靠工作流质量和成片率支撑。
+    </div>
+  </div>
+
+  <!-- 关键结论 -->
+  <div class="section">
+    <div class="section-header">
+      <h2>关键结论</h2>
+      <div class="line"></div>
+    </div>
+    <div class="conclusions">
+      <div class="conclusion-item">
+        <span class="c-num">01</span>
+        <p class="c-text"><strong>四档定价覆盖全用户生命周期</strong>：免费版拉新体验，Pro 为主力付费入口，Plus / Max 锁定高频团队用户。</p>
+      </div>
+      <div class="conclusion-item">
+        <span class="c-num">02</span>
+        <p class="c-text"><strong>月利润随档位递增</strong>：Pro ¥36 → Plus ¥75 → Max ¥135，应重点引导 Plus 升级以最大化人均 ARPU。</p>
+      </div>
+      <div class="conclusion-item">
+        <span class="c-num">03</span>
+        <p class="c-text"><strong>年付对平台收益更优</strong>：年付用户积分使用率通常 50–70%，未消耗积分全为平台净收入，实际毛利率高于月付。</p>
+      </div>
+      <div class="conclusion-item">
+        <span class="c-num">04</span>
+        <p class="c-text"><strong>定价接受度需 A/B 验证</strong>：Pro ¥129 约为竞品 2 倍，溢价心智能否成立，需灰度测试付费转化率后再决策是否调整最低档。</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function switchTab(group, tab, btn) {
+  document.querySelectorAll('[id^="' + group + '-"]').forEach(el => el.classList.remove('active'));
+  btn.closest('.tabs').querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById(group + '-' + tab).classList.add('active');
+  btn.classList.add('active');
+}
+</script>
+</body>
+</html>
